@@ -21,13 +21,26 @@ local function load_shared_lib(so_name)
   end
 end
 
-local go_s3 = load_shared_lib("s3.so") -- Load the shared library
+local go_s3 = load_shared_lib("./go-src/s3.so") -- Load the shared library
 
 ffi.cdef [[
-  void *getObject(const char *cBucket, const char *cKey, const char *cRegion, const char *cAccessKey, const char *cSecretKey, const char *cCustomEndpoint);
+  typedef struct {
+    void* r0;
+    void* r1;
+  } ReturnType;
+
+  ReturnType getObject(const char *cBucket, const char *cKey, const char *cRegion, const char *cAccessKey, const char *cSecretKey, const char *cCustomEndpoint);
 ]]
 
 function _M.get_object(bucket, key, region, access_key, secret_key, custom_endpoint)
-  local resp = go_s3.getObject(bucket, key, region, access_key, secret_key, custom_endpoint)
-  return ffi.string(resp)
+  local return_type = go_s3.getObject(bucket, key, region, access_key, secret_key, custom_endpoint)
+  local res = return_type.r0
+  local err = return_type.r1
+
+  if res == nil then
+    return nil, ffi.string(err)
+  end
+  return ffi.string(res), nil
 end
+
+return _M

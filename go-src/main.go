@@ -14,7 +14,7 @@ import (
 )
 
 //export getObject
-func getObject(cBucket *C.char, cKey *C.char, cRegion *C.char, cAccessKey *C.char, cSecretKey *C.char, cCustomEndpoint *C.char) unsafe.Pointer {
+func getObject(cBucket *C.char, cKey *C.char, cRegion *C.char, cAccessKey *C.char, cSecretKey *C.char, cCustomEndpoint *C.char) (unsafe.Pointer, unsafe.Pointer) {
 	region := C.GoString(cRegion)
 	accessKey := C.GoString(cAccessKey)
 	secretKey := C.GoString(cSecretKey)
@@ -38,15 +38,15 @@ func getObject(cBucket *C.char, cKey *C.char, cRegion *C.char, cAccessKey *C.cha
 	})
 
 	if err != nil {
-		return unsafe.Pointer(C.CString(err.Error()))
+		return nil, unsafe.Pointer(C.CString(err.Error()))
 	}
 
 	body, err := io.ReadAll(out.Body)
 	if err != nil {
-		return unsafe.Pointer(C.CString(err.Error()))
+		return nil, unsafe.Pointer(C.CString(err.Error()))
 	}
 
-	return unsafe.Pointer(C.CString(string(body)))
+	return unsafe.Pointer(C.CString(string(body))), nil
 }
 
 func main() {
