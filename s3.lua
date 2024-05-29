@@ -21,7 +21,7 @@ local function load_shared_lib(so_name)
   end
 end
 
-local go_s3 = load_shared_lib("./go-src/s3.so") -- Load the shared library
+local go_s3 = load_shared_lib("s3.so") -- Load the shared library
 
 ffi.cdef [[
   typedef struct {
