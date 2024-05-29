@@ -1,6 +1,4 @@
 INST_PREFIX ?= /usr
-OS ?= linux
-ARCH ?= amd_64
 
 ifeq ($(shell uname),Darwin)
     ifeq ($(shell uname -m),arm64)
