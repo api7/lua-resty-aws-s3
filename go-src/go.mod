@@ -1,6 +1,6 @@
 module github.com/api7/lua-resty-aws-s3
 
-go 1.21.3
+go 1.23.8
 
 require github.com/aws/aws-sdk-go-v2/credentials v1.17.16
 
@@ -16,7 +16,7 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.27.0 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.27.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.54.3
 	github.com/aws/smithy-go v1.20.2 // indirect
 )
