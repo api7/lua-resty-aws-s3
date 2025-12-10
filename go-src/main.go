@@ -4,6 +4,7 @@ import (
 	"C"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
@@ -22,11 +23,21 @@ func getObject(cBucket *C.char, cKey *C.char, cRegion *C.char, cAccessKey *C.cha
 	bucket := C.GoString(cBucket)
 	key := C.GoString(cKey)
 
-	creds := credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")
-	cfg := aws.Config{
-		Region:      region,
-		Credentials: creds,
+	var cfg aws.Config
+	if accessKey == "" || secretKey == "" {
+		c, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
+		if err != nil {
+			return nil, unsafe.Pointer(C.CString(err.Error()))
+		}
+		cfg = c
+	} else {
+		creds := credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")
+		cfg = aws.Config{
+			Region:      region,
+			Credentials: creds,
+		}
 	}
+
 	if customEndpoint != "" {
 		cfg.BaseEndpoint = &customEndpoint
 	}
