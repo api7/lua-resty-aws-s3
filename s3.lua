@@ -30,6 +30,8 @@ ffi.cdef [[
   } ReturnType;
 
   ReturnType getObject(const char *cBucket, const char *cKey, const char *cRegion, const char *cAccessKey, const char *cSecretKey, const char *cCustomEndpoint);
+
+  void* putObject(const char *cBucket, const char *cKey, const char *cContent, const char *cRegion, const char *cAccessKey, const char *cSecretKey, const char *cCustomEndpoint);
 ]]
 
 function _M.get_object(bucket, key, region, access_key, secret_key, custom_endpoint)
@@ -41,6 +43,16 @@ function _M.get_object(bucket, key, region, access_key, secret_key, custom_endpo
     return nil, ffi.string(err)
   end
   return ffi.string(res), nil
+end
+
+function _M.put_object(bucket, key, content, region, access_key, secret_key, custom_endpoint)
+  local err = go_s3.putObject(bucket, key, content, region, access_key, secret_key, custom_endpoint)
+
+  if err ~= nil then
+    return nil, ffi.string(err)
+  end
+
+  return true
 end
 
 return _M
