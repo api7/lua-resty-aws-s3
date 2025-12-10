@@ -71,11 +71,21 @@ func putObject(cBucket *C.char, cKey *C.char, cContent *C.char, cRegion *C.char,
 	key := C.GoString(cKey)
 	content := C.GoString(cContent)
 
-	creds := credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")
-	cfg := aws.Config{
-		Region:      region,
-		Credentials: creds,
+	var cfg aws.Config
+	if accessKey == "" || secretKey == "" {
+		c, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
+		if err != nil {
+			return unsafe.Pointer(C.CString(err.Error()))
+		}
+		cfg = c
+	} else {
+		creds := credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")
+		cfg = aws.Config{
+			Region:      region,
+			Credentials: creds,
+		}
 	}
+
 	if customEndpoint != "" {
 		cfg.BaseEndpoint = &customEndpoint
 	}
