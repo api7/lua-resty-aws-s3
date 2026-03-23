@@ -1,6 +1,6 @@
 module github.com/api7/lua-resty-aws-s3
 
-go 1.23.8
+go 1.25.8
 
 require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.5
