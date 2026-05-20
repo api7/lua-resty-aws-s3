@@ -1,18 +1,20 @@
 package main
 
-import (
-	"C"
+/*
+#include <stdlib.h>
+*/
+import "C"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-)
 import (
 	"bytes"
 	"context"
 	"io"
 	"unsafe"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 //export getObject
@@ -60,7 +62,7 @@ func putObject(cBucket *C.char, cKey *C.char, cContent *C.char, cRegion *C.char,
 	usePathStyle := cUsePathStyle != 0
 
 	cfg, err := getConfiguration(region, accessKey, secretKey, customEndpoint)
-	if cfg == nil {
+	if err != nil {
 		return unsafe.Pointer(C.CString(err.Error()))
 	}
 	cli := newS3Client(*cfg, usePathStyle)
@@ -104,6 +106,11 @@ func newS3Client(cfg aws.Config, usePathStyle bool) *s3.Client {
 	return s3.NewFromConfig(cfg, func(o *s3.Options) {
 		o.UsePathStyle = usePathStyle
 	})
+}
+
+//export freeCString
+func freeCString(ptr unsafe.Pointer) {
+	C.free(ptr)
 }
 
 func main() {

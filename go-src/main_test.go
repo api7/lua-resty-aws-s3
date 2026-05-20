@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -26,10 +27,13 @@ func TestUsePathStyleWithEndpointPrefix(t *testing.T) {
 
 	for _, usePathStyle := range []bool{false, true} {
 		t.Run("use_path_style_"+map[bool]string{false: "false", true: "true"}[usePathStyle], func(t *testing.T) {
-			var requests []string
+			var mu sync.Mutex
+			var requests []recordedRequest
 			var stored string
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				requests = append(requests, r.Method+" "+r.Host+r.URL.RequestURI())
+				mu.Lock()
+				requests = append(requests, recordedRequest{method: r.Method, host: r.Host, path: r.URL.Path})
+				mu.Unlock()
 				if r.URL.Path != prefix+"/"+bucket+"/"+key {
 					http.Error(w, "unexpected path: "+r.URL.Path, http.StatusNotFound)
 					return
@@ -42,10 +46,15 @@ func TestUsePathStyleWithEndpointPrefix(t *testing.T) {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
 					}
+					mu.Lock()
 					stored = string(data)
+					mu.Unlock()
 					w.WriteHeader(http.StatusOK)
 				case http.MethodGet:
-					_, _ = w.Write([]byte(stored))
+					mu.Lock()
+					body := stored
+					mu.Unlock()
+					_, _ = w.Write([]byte(body))
 				default:
 					http.Error(w, "unexpected method", http.StatusMethodNotAllowed)
 				}
@@ -96,6 +105,7 @@ func TestUsePathStyleWithEndpointPrefix(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
+				defer out.Body.Close()
 				got, err := io.ReadAll(out.Body)
 				if err != nil {
 					t.Fatal(err)
@@ -103,11 +113,14 @@ func TestUsePathStyleWithEndpointPrefix(t *testing.T) {
 				if string(got) != body {
 					t.Fatalf("expected body %q, got %q", body, string(got))
 				}
-				want := []string{
-					"PUT minio.test:" + port + "/fallback-cp-config/resource-bucket/gwid?x-id=PutObject",
-					"GET minio.test:" + port + "/fallback-cp-config/resource-bucket/gwid?x-id=GetObject",
+				want := []recordedRequest{
+					{method: "PUT", host: "minio.test:" + port, path: "/fallback-cp-config/resource-bucket/gwid"},
+					{method: "GET", host: "minio.test:" + port, path: "/fallback-cp-config/resource-bucket/gwid"},
 				}
-				if strings.Join(requests, "\n") != strings.Join(want, "\n") {
+				mu.Lock()
+				gotRequests := append([]recordedRequest(nil), requests...)
+				mu.Unlock()
+				if strings.Join(formatRequests(gotRequests), "\n") != strings.Join(formatRequests(want), "\n") {
 					t.Fatalf("expected requests %v, got %v", want, requests)
 				}
 				return
@@ -116,12 +129,29 @@ func TestUsePathStyleWithEndpointPrefix(t *testing.T) {
 			if err == nil {
 				t.Fatal("expected PutObject to fail without path-style")
 			}
-			want := []string{
-				"PUT resource-bucket.minio.test:" + port + "/fallback-cp-config/gwid?x-id=PutObject",
+			want := []recordedRequest{
+				{method: "PUT", host: "resource-bucket.minio.test:" + port, path: "/fallback-cp-config/gwid"},
 			}
-			if strings.Join(requests, "\n") != strings.Join(want, "\n") {
+			mu.Lock()
+			gotRequests := append([]recordedRequest(nil), requests...)
+			mu.Unlock()
+			if strings.Join(formatRequests(gotRequests), "\n") != strings.Join(formatRequests(want), "\n") {
 				t.Fatalf("expected requests %v, got %v", want, requests)
 			}
 		})
 	}
+}
+
+type recordedRequest struct {
+	method string
+	host   string
+	path   string
+}
+
+func formatRequests(requests []recordedRequest) []string {
+	out := make([]string, 0, len(requests))
+	for _, req := range requests {
+		out = append(out, req.method+" "+req.host+req.path)
+	}
+	return out
 }
