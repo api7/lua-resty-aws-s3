@@ -29,13 +29,13 @@ ffi.cdef [[
     void* r1;
   } ReturnType;
 
-  ReturnType getObject(const char *cBucket, const char *cKey, const char *cRegion, const char *cAccessKey, const char *cSecretKey, const char *cCustomEndpoint);
+  ReturnType getObject(const char *cBucket, const char *cKey, const char *cRegion, const char *cAccessKey, const char *cSecretKey, const char *cCustomEndpoint, int cUsePathStyle);
 
-  void* putObject(const char *cBucket, const char *cKey, const char *cContent, const char *cRegion, const char *cAccessKey, const char *cSecretKey, const char *cCustomEndpoint);
+  void* putObject(const char *cBucket, const char *cKey, const char *cContent, const char *cRegion, const char *cAccessKey, const char *cSecretKey, const char *cCustomEndpoint, int cUsePathStyle);
 ]]
 
-function _M.get_object(bucket, key, region, access_key, secret_key, custom_endpoint)
-  local return_type = go_s3.getObject(bucket, key, region, access_key, secret_key, custom_endpoint)
+function _M.get_object(bucket, key, region, access_key, secret_key, custom_endpoint, use_path_style)
+  local return_type = go_s3.getObject(bucket, key, region, access_key, secret_key, custom_endpoint, use_path_style and 1 or 0)
   local res = return_type.r0
   local err = return_type.r1
 
@@ -45,8 +45,8 @@ function _M.get_object(bucket, key, region, access_key, secret_key, custom_endpo
   return ffi.string(res), nil
 end
 
-function _M.put_object(bucket, key, content, region, access_key, secret_key, custom_endpoint)
-  local err = go_s3.putObject(bucket, key, content, region, access_key, secret_key, custom_endpoint)
+function _M.put_object(bucket, key, content, region, access_key, secret_key, custom_endpoint, use_path_style)
+  local err = go_s3.putObject(bucket, key, content, region, access_key, secret_key, custom_endpoint, use_path_style and 1 or 0)
 
   if err ~= nil then
     return nil, ffi.string(err)
