@@ -105,6 +105,12 @@ func getConfiguration(region, accessKey, secretKey, customEndpoint string) (*aws
 func newS3Client(cfg aws.Config, usePathStyle bool) *s3.Client {
 	return s3.NewFromConfig(cfg, func(o *s3.Options) {
 		o.UsePathStyle = usePathStyle
+		// The backend is often an S3-compatible store rather than AWS S3, so opt
+		// out of the SDK's default of attaching x-amz-checksum-* to every request
+		// it can. Pinning it here also keeps both getConfiguration branches
+		// consistent: only LoadDefaultConfig populates these two fields.
+		o.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
+		o.ResponseChecksumValidation = aws.ResponseChecksumValidationWhenRequired
 	})
 }
 
