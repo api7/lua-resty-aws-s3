@@ -142,6 +142,72 @@ func TestUsePathStyleWithEndpointPrefix(t *testing.T) {
 	}
 }
 
+func TestPutObjectSendsNoChecksumHeaders(t *testing.T) {
+	const (
+		bucket = "resource-bucket"
+		key    = "gwid"
+		body   = "payload"
+	)
+
+	t.Setenv("AWS_ACCESS_KEY_ID", "env-access")
+	t.Setenv("AWS_SECRET_ACCESS_KEY", "env-secret")
+
+	for _, tc := range []struct {
+		name      string
+		accessKey string
+		secretKey string
+	}{
+		{name: "static_credentials", accessKey: "access", secretKey: "secret"},
+		{name: "default_credential_chain"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var mu sync.Mutex
+			var checksumHeaders []string
+			var received string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				data, err := io.ReadAll(r.Body)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				mu.Lock()
+				received = string(data)
+				for name := range r.Header {
+					if strings.HasPrefix(strings.ToLower(name), "x-amz-checksum-") {
+						checksumHeaders = append(checksumHeaders, name)
+					}
+				}
+				mu.Unlock()
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			cfg, err := getConfiguration("us-east-1", tc.accessKey, tc.secretKey, server.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			_, err = newS3Client(*cfg, true).PutObject(context.Background(), &s3.PutObjectInput{
+				Bucket: aws.String(bucket),
+				Key:    aws.String(key),
+				Body:   strings.NewReader(body),
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+			if len(checksumHeaders) != 0 {
+				t.Fatalf("expected no x-amz-checksum-* headers, got %v", checksumHeaders)
+			}
+			if received != body {
+				t.Fatalf("expected body %q to be sent verbatim, got %q", body, received)
+			}
+		})
+	}
+}
+
 type recordedRequest struct {
 	method string
 	host   string
